@@ -1,42 +1,46 @@
 /** @jsx h */
 import { h } from "preact";
 import { Handlers, PageProps } from "$fresh/server.ts";
-import * as queryString from 'query-string';
-import { getAccessToken } from '../../utils/github.ts';
+import * as queryString from "query-string";
+import {
+  getUserInfo,
+  getAccessToken,
+  GithubClient,
+} from "../../utils/github.ts";
+import * as TE from "fp-ts/lib/TaskEither";
+import * as E from "fp-ts/lib/Either";
+import { pipe, identity } from "fp-ts/lib/function";
 
-export const handler: Handlers<unknown> = {
-  async GET(req, ctx) {
-    const url = new URL(req.url);
-    const code = url.searchParams.get('code');
-    if (!code || url.searchParams.get('error'))
-      return Response.redirect("/login");
-
-    const params = queryString.stringify({
-      client_id: '913b60c19151a18214c3',
-      client_secret: 'SECRET',
-      redirect_uri: 'http://localhost:8000/auth/github',
-      code,
-    });
-    // TODO: get access token
-    const resp = await fetch(`https://github.com/login/oauth/access_token?${params}`);
-    const body = await resp.text();
-    console.log(body);
-    const parsed = queryString.parse(body);
-
-    const userResp = await fetch('https://api.github.com/user', {
-      headers: {
-        Authorization: `token ${parsed.access_token}`
-      }
-    });
-
-    return await ctx.render(await userResp.text());
-  },
+const getCode = (url: URL): E.Either<unknown, string> => {
+  const code = url.searchParams.get("code");
+  const err = url.searchParams.get("error");
+  return !code || err ? E.left(err) : E.right(code);
 };
 
-export default function Page({ data }: PageProps<unknown>) {
-  return (
-    <pre>
-      {JSON.stringify(data)}
-    </pre>
-  );
-}
+const client: GithubClient = {
+  id: "913b60c19151a18214c3",
+  secret: "BLAH",
+  redirectUri: "http://localhost:8000/auth/github",
+};
+
+export const handler: Handlers<unknown> = {
+  async GET(req, _ctx) {
+    const url = new URL(req.url);
+    const redirect = await pipe(
+      getCode(url),
+      TE.fromEither,
+      TE.chain(getAccessToken(client)),
+      TE.chain((token) =>
+        pipe(
+          getUserInfo(token),
+          TE.map((user) => [token, user] as const)
+        )
+      ),
+      TE.map(([_token, _user]) => "http://localhost:8000/"),
+      TE.mapLeft(e => `http://localhost:8000/login?${queryString.stringify({e:JSON.stringify(e)})}`),
+      TE.toUnion
+    )();
+
+    return Response.redirect(redirect);
+  },
+};
