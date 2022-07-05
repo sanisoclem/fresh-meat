@@ -9,7 +9,7 @@ import {
 } from "../../utils/github.ts";
 import * as TE from "fp-ts/lib/TaskEither";
 import * as E from "fp-ts/lib/Either";
-import { pipe, identity } from "fp-ts/lib/function";
+import { pipe } from "fp-ts/lib/function";
 
 const getCode = (url: URL): E.Either<unknown, string> => {
   const code = url.searchParams.get("code");

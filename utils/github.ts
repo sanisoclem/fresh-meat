@@ -23,7 +23,7 @@ const GithubUserCodec = t.type({
   id: t.number,
   name: t.string,
   url: t.string,
-  html_url: t.string
+  html_url: t.string,
 });
 
 export type GithubUser = t.TypeOf<typeof GithubUserCodec>;
