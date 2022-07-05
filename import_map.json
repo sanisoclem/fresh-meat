@@ -7,6 +7,9 @@
     "@twind": "./utils/twind.ts",
     "twind": "https://esm.sh/twind@0.16.17",
     "twind/": "https://esm.sh/twind@0.16.17/",
-    "query-string": "https://esm.sh/query-string@7.1.1,"
+    "query-string": "https://esm.sh/query-string@7.1.1",
+    "fp-ts": "https://esm.sh/fp-ts@2.12.1",
+    "fp-ts/": "https://esm.sh/fp-ts@2.12.1/",
+    "io-ts" : "https://esm.sh/io-ts@2.2.16"
   }
 }

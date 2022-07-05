@@ -2,7 +2,7 @@
 import { h } from "preact";
 import { Handlers, PageProps } from "$fresh/server.ts";
 import * as queryString from 'query-string';
-
+import { getAccessToken } from '../../utils/github.ts';
 
 export const handler: Handlers<unknown> = {
   async GET(req, ctx) {
