@@ -1,14 +1,14 @@
 /** @jsx h */
-import { h } from "preact";
-import { Handlers, PageProps } from "$fresh/server.ts";
+import { Handlers } from "$fresh/server.ts";
 import * as queryString from "query-string";
 import {
   getUserInfo,
   getAccessToken,
-  GithubClient,
+  getClient,
 } from "../../utils/github.ts";
 import * as TE from "fp-ts/lib/TaskEither";
 import * as E from "fp-ts/lib/Either";
+import * as O from "fp-ts/lib/Option";
 import { pipe } from "fp-ts/lib/function";
 
 const getCode = (url: URL): E.Either<unknown, string> => {
@@ -17,30 +17,41 @@ const getCode = (url: URL): E.Either<unknown, string> => {
   return !code || err ? E.left(err) : E.right(code);
 };
 
-const client: GithubClient = {
-  id: "913b60c19151a18214c3",
-  secret: "BLAH",
-  redirectUri: "http://localhost:8000/auth/github",
-};
-
 export const handler: Handlers<unknown> = {
-  async GET(req, _ctx) {
-    const url = new URL(req.url);
-    const redirect = await pipe(
-      getCode(url),
-      TE.fromEither,
-      TE.chain(getAccessToken(client)),
-      TE.chain((token) =>
-        pipe(
-          getUserInfo(token),
-          TE.map((user) => [token, user] as const)
-        )
-      ),
-      TE.map(([_token, _user]) => "http://localhost:8000/"),
-      TE.mapLeft(e => `http://localhost:8000/login?${queryString.stringify({e:JSON.stringify(e)})}`),
+  async GET(req, ctx) {
+    const client = pipe(
+      getClient(),
+      O.map(TE.right),
+      O.getOrElse(() => TE.left("no client" as unknown))
+    );
+
+    const code = pipe(
+      new URL(req.url),
+      getCode,
+      E.map(TE.right),
+      E.getOrElse(() => TE.left("no code" as unknown))
+    );
+
+    return await pipe(
+      client,
+      TE.chainTaskK(client => pipe(
+        TE.Do,
+        TE.bind("code", () => code),
+        TE.map((e) => e),
+        TE.bind("token", ({ code }) => getAccessToken(client, code)),
+        TE.bind("user", ({ token }) => getUserInfo(token)),
+        TE.map(() => client.redirectSuccess),
+        TE.mapLeft(
+          (e) =>
+            `${client.redirectError}?${queryString.stringify({
+              err: JSON.stringify(e),
+            })}`
+        ),
+        TE.toUnion
+      )),
+      TE.map(url => Response.redirect(url)),
+      TE.mapLeft(() => Response.error()),
       TE.toUnion
     )();
-
-    return Response.redirect(redirect);
   },
 };
