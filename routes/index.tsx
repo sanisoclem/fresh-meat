@@ -2,17 +2,21 @@
 import { h } from "preact";
 import { tw } from "@twind";
 import { Handlers, PageProps } from "$fresh/server.ts";
+import { pipe, identity } from "fp-ts/lib/function";
+import * as TE from "fp-ts/lib/TaskEither";
 import { getLedgers, Ledger } from "../src/ledger.ts";
 
-export const handler: Handlers<Ledger[]> = {
+type ViewModel = readonly Ledger[];
+export const handler: Handlers<ViewModel> = {
   async GET(_, ctx) {
-    const ledgers = await getLedgers();
-    return ctx.render(ledgers);
+    return await pipe(getLedgers(),
+      TE.chainTaskK(d => async () => await ctx.render(d)),
+      TE.mapLeft(e => Response.error()),
+      TE.toUnion)();
   },
 };
 
-
-export default function Dashboard({ data }: PageProps<Ledger[]>) {
+export default function Dashboard({ data }: PageProps<ViewModel>) {
   return (
     <div class={tw`bg-gray-800 w-screen text-white`}>
       <div class={tw`mx-auto p-4 min-h-screen gap-y-8 max-w-md flex flex-col justify-center items-center`}>
