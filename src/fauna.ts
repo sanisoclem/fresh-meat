@@ -4,7 +4,7 @@ import * as E from "fp-ts/lib/Either";
 import * as t from "io-ts";
 
 import { pipe } from "fp-ts/lib/function";
-import { getEnv } from "./env.ts";
+import { getEnv, getEnvOrDefault } from "./env.ts";
 
 export const {
   Call,
@@ -40,12 +40,11 @@ export const getClient = (): O.Option<FaunaClient> =>
   pipe(
     O.Do,
     O.bind("secret", () => getEnv("FAUNA_SECRET")),
-    O.bind("domain", () => getEnv("FAUNA_DOMAIN")),
     O.map(
-      ({ secret, domain }) =>
+      ({ secret }) =>
         new fauna.Client({
           secret,
-          domain,
+          domain: getEnvOrDefault("FAUNA_DOMAIN", () => "db.fauna.com"),
           port: 443,
           scheme: "https",
         })
