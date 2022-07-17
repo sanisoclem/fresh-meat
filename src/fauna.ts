@@ -7,10 +7,8 @@ import { pipe } from "fp-ts/lib/function";
 import { getEnv, getEnvOrDefault } from "./env.ts";
 
 export const {
-  Call,
   Create,
   Collection,
-  CurrentIdentity,
   Paginate,
   Documents,
   Lambda,
